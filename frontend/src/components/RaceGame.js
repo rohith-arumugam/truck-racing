@@ -90,7 +90,7 @@ const RaceGame = ({ gameId, playerId, gameData, backendUrl }) => {
     // Connect to WebSocket with proper error handling
     let ws;
     try {
-      const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/api/ws/${activeGameId}/${playerId}`;
+      const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/api/ws/${gameId}/${playerId}`;
       console.log("Connecting to WebSocket URL:", wsUrl);
       
       ws = new WebSocket(wsUrl);
