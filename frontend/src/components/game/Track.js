@@ -101,6 +101,20 @@ const Track = ({ track, onLapCompleted, onOffTrack }) => {
         <meshStandardMaterial color="white" />
       </mesh>
       
+      {/* Start/Finish text */}
+      <group position={[0, 3, -2450]}>
+        <Text 
+          position={[0, 0, 0]}
+          rotation={[0, Math.PI, 0]} 
+          fontSize={2} 
+          color="#00f7ff"
+          anchorX="center"
+          anchorY="middle"
+        >
+          START
+        </Text>
+      </group>
+      
       {/* Checkpoints - would be placed at various points around the track */}
       {track && track.checkpoints && track.checkpoints.map((checkpoint, index) => {
         // Calculate position based on checkpoint data
