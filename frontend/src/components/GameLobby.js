@@ -20,7 +20,7 @@ const GameLobby = ({ gameId, playerId, gameData, backendUrl }) => {
     
     console.log("Attempting WebSocket connection with:", {
       backendUrl,
-      activeGameId,
+      gameId,
       playerId
     });
     
