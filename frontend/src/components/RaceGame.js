@@ -57,8 +57,8 @@ const RaceGame = ({ gameId, playerId, gameData, backendUrl }) => {
   
   // Connect to the game server via WebSocket
   useEffect(() => {
-    if (!activeGameId || !playerId) {
-      console.error("Missing gameId or playerId in Race component:", { activeGameId, playerId });
+    if (!gameId || !playerId) {
+      console.error("Missing gameId or playerId in Race component:", { gameId, playerId });
       navigate('/');
       return;
     }
