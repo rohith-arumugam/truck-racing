@@ -27,7 +27,7 @@ const GameLobby = ({ gameId, playerId, gameData, backendUrl }) => {
     // Connect to WebSocket server for real-time game updates
     // Use a try-catch to handle potential WebSocket initialization errors
     try {
-      const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/api/ws/${activeGameId}/${playerId}`;
+      const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/api/ws/${gameId}/${playerId}`;
       console.log("Connecting to WebSocket URL:", wsUrl);
       
       const ws = new WebSocket(wsUrl);
