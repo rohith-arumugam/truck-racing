@@ -14,39 +14,81 @@ const GameLobby = ({ gameId, playerId, gameData, backendUrl }) => {
   const activeGameId = gameId || urlGameId;
   
   useEffect(() => {
-    if (!activeGameId) {
+    if (!activeGameId || !playerId) {
+      console.error("Missing gameId or playerId:", { activeGameId, playerId });
+      
+      // If we have gameId but no playerId, try to get the game data first
+      if (activeGameId && !playerId) {
+        fetch(`${backendUrl}/api/games/${activeGameId}/join`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.error) {
+              console.error("Error joining game:", data.error);
+              navigate('/');
+            } else {
+              // Got player ID, now we can proceed
+              console.log("Joined game with player ID:", data.player_id);
+              window.location.reload(); // Simple solution to force proper reload with new player ID
+            }
+          })
+          .catch(err => {
+            console.error("Error joining game:", err);
+            navigate('/');
+          });
+        return;
+      }
+      
       navigate('/');
       return;
     }
     
+    console.log("Attempting WebSocket connection with:", {
+      backendUrl,
+      activeGameId,
+      playerId
+    });
+    
     // Connect to WebSocket server for real-time game updates
-    const ws = new WebSocket(`${backendUrl.replace('http', 'ws')}/api/ws/${activeGameId}/${playerId}`);
-    
-    ws.onopen = () => {
-      console.log('Connected to the game server');
-      setSocket(ws);
-    };
-    
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    // Use a try-catch to handle potential WebSocket initialization errors
+    try {
+      const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/api/ws/${activeGameId}/${playerId}`;
+      console.log("Connecting to WebSocket URL:", wsUrl);
       
-      console.log('Received message:', data);
+      const ws = new WebSocket(wsUrl);
       
-      if (data.type === 'player_joined') {
-        setPlayers(data.players);
-      } else if (data.type === 'game_start') {
-        // Game is starting, redirect to game screen
-        navigate(`/game?game=${activeGameId}`);
-      }
-    };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-    
-    ws.onclose = () => {
-      console.log('Disconnected from the game server');
-    };
+      ws.onopen = () => {
+        console.log('Successfully connected to the game server');
+        setSocket(ws);
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('Received WebSocket message:', data);
+          
+          if (data.type === 'player_joined') {
+            console.log('New player joined:', data);
+            setPlayers(data.players);
+          } else if (data.type === 'game_start') {
+            console.log('Game starting!');
+            // Game is starting, redirect to game screen
+            navigate(`/game?game=${activeGameId}`);
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error, event.data);
+        }
+      };
+      
+      ws.onerror = (error) => {
+        console.error('WebSocket error:', error);
+      };
+      
+      ws.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
+      };
+    } catch (error) {
+      console.error('Error initializing WebSocket:', error);
+    }
     
     // Clean up on unmount
     return () => {
