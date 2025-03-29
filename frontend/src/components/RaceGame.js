@@ -206,8 +206,8 @@ const RaceGame = ({ gameId, playerId, gameData, backendUrl }) => {
     
     // Clean up on unmount
     return () => {
-      if (ws) {
-        ws.close();
+      if (socket) {
+        socket.close();
       }
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
