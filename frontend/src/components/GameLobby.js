@@ -108,7 +108,7 @@ const GameLobby = ({ gameId, playerId, gameData, backendUrl }) => {
       <div className="lobby-info">
         <h2 className="lobby-info-title">Invite a Friend</h2>
         <div className="lobby-link">
-          {`${window.location.origin}/?join=${activeGameId}`}
+          {`${window.location.origin}/?join=${gameId}`}
           <button className="copy-button" onClick={copyGameLink}>
             {copySuccess || 'Copy'}
           </button>
