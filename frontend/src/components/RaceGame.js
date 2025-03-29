@@ -15,9 +15,6 @@ import GameControls from './game/GameControls';
 import GameOver from './game/GameOver';
 
 const RaceGame = ({ gameId, playerId, gameData, backendUrl }) => {
-  const [searchParams] = useSearchParams();
-  const urlGameId = searchParams.get('game');
-  const activeGameId = gameId || urlGameId;
   
   const navigate = useNavigate();
   
