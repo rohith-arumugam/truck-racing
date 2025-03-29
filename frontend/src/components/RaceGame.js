@@ -83,7 +83,7 @@ const RaceGame = ({ gameId, playerId, gameData, backendUrl }) => {
     
     console.log("Attempting to connect to WebSocket in RaceGame with:", {
       backendUrl,
-      activeGameId,
+      gameId,
       playerId
     });
     
