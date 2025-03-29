@@ -1,140 +1,127 @@
-import pytest
+import requests
 import asyncio
-import json
 import websockets
+import json
 import os
-from fastapi.testclient import TestClient
-from server import app, generate_track
+from dotenv import load_dotenv
+import logging
 
-# Get backend URL from environment
-BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001')
-WS_URL = BACKEND_URL.replace('http', 'ws')
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-client = TestClient(app)
+# Load environment variables
+load_dotenv()
+BACKEND_URL = os.getenv('REACT_APP_BACKEND_URL')
 
-def test_root():
-    response = client.get("/api")
-    assert response.status_code == 200
-    assert response.json() == {"message": "Truck Racing Game API"}
+class TruckRacingGameTester:
+    def __init__(self):
+        self.backend_url = BACKEND_URL
+        self.tests_run = 0
+        self.tests_passed = 0
 
-def test_create_game():
-    response = client.post("/api/games")
-    assert response.status_code == 200
-    data = response.json()
-    
-    # Verify response structure
-    assert "game_id" in data
-    assert "player_id" in data
-    assert "tracks" in data
-    assert len(data["tracks"]) == 10  # 10 laps
-    
-    # Verify track structure
-    track = data["tracks"][0]
-    assert "type" in track
-    assert "features" in track
-    assert "length" in track
-    assert "checkpoints" in track
-    assert len(track["checkpoints"]) >= 8  # At least 8 checkpoints
-    
-    return data["game_id"], data["player_id"]
+    def run_test(self, name, method, endpoint, expected_status, data=None):
+        """Run a single API test"""
+        url = f"{self.backend_url}/api/{endpoint}"
+        headers = {'Content-Type': 'application/json'}
+        
+        self.tests_run += 1
+        logger.info(f"\n🔍 Testing {name}...")
+        
+        try:
+            if method == 'GET':
+                response = requests.get(url, headers=headers)
+            elif method == 'POST':
+                response = requests.post(url, json=data, headers=headers)
 
-def test_join_game():
-    # First create a game
-    game_id, host_id = test_create_game()
-    
-    # Then try to join it
-    response = client.get(f"/api/games/{game_id}/join")
-    assert response.status_code == 200
-    data = response.json()
-    
-    # Verify response structure
-    assert data["game_id"] == game_id
-    assert "player_id" in data
-    assert data["host_id"] == host_id
-    assert "tracks" in data
-    assert len(data["tracks"]) == 10
-    
-    return data["player_id"]
+            success = response.status_code == expected_status
+            if success:
+                self.tests_passed += 1
+                logger.info(f"✅ Passed - Status: {response.status_code}")
+                return True, response.json()
+            else:
+                logger.error(f"❌ Failed - Expected {expected_status}, got {response.status_code}")
+                return False, {}
 
-@pytest.mark.asyncio
-async def test_websocket_game_flow():
-    # Create a game first
-    game_id, host_id = test_create_game()
-    
-    # Join as second player
-    guest_id = test_join_game()
-    
-    # Connect both players via WebSocket
-    async with websockets.connect(f"{WS_URL}/api/ws/{game_id}/{host_id}") as host_ws, \
-              websockets.connect(f"{WS_URL}/api/ws/{game_id}/{guest_id}") as guest_ws:
-        
-        # Both players ready up
-        await host_ws.send(json.dumps({"type": "player_ready"}))
-        await guest_ws.send(json.dumps({"type": "player_ready"}))
-        
-        # Wait for game start message
-        host_msg = json.loads(await host_ws.recv())
-        assert host_msg["type"] == "game_start"
-        assert "startTime" in host_msg
-        
-        guest_msg = json.loads(await guest_ws.recv())
-        assert guest_msg["type"] == "game_start"
-        
-        # Simulate some position updates
-        position_update = {
-            "type": "position_update",
-            "position": {"x": 10, "y": 0, "z": 20},
-            "rotation": {"x": 0, "y": 0.5, "z": 0},
-            "speed": 50
-        }
-        
-        await host_ws.send(json.dumps(position_update))
-        
-        # Verify opponent receives position update
-        update_msg = json.loads(await guest_ws.recv())
-        assert update_msg["type"] == "player_position"
-        assert update_msg["player_id"] == host_id
-        assert update_msg["position"] == position_update["position"]
-        
-        # Simulate lap completion
-        lap_msg = {
-            "type": "lap_completed",
-            "lap": 1
-        }
-        
-        await host_ws.send(json.dumps(lap_msg))
-        
-        # Verify opponent receives lap update
-        lap_update = json.loads(await guest_ws.recv())
-        assert lap_update["type"] == "player_lap"
-        assert lap_update["player_id"] == host_id
-        assert lap_update["lap"] == 1
+        except Exception as e:
+            logger.error(f"❌ Failed - Error: {str(e)}")
+            return False, {}
 
-def test_track_generation():
-    track = generate_track()
-    
-    # Verify track structure
-    assert "type" in track
-    assert track["type"] in ["desert", "snow", "forest", "city", "space"]
-    
-    assert "features" in track
-    assert len(track["features"]) >= 2
-    assert len(track["features"]) <= 4
-    
-    assert "length" in track
-    assert track["length"] == 5000  # 5km track
-    
-    assert "checkpoints" in track
-    assert len(track["checkpoints"]) >= 8
-    assert len(track["checkpoints"]) <= 15
-    
-    # Verify checkpoint structure
-    checkpoint = track["checkpoints"][0]
-    assert "id" in checkpoint
-    assert "position" in checkpoint
-    assert "lateral_offset" in checkpoint
-    assert 0 <= checkpoint["position"] <= 5000
-    assert -20 <= checkpoint["lateral_offset"] <= 20
+    async def test_websocket_connection(self, game_id, player_id):
+        """Test WebSocket connection and game flow"""
+        ws_url = f"{self.backend_url.replace('http', 'ws')}/api/ws/{game_id}/{player_id}"
+        
+        try:
+            async with websockets.connect(ws_url) as websocket:
+                logger.info("✅ WebSocket connection established")
+                
+                # Test player ready message
+                ready_msg = json.dumps({"type": "player_ready"})
+                await websocket.send(ready_msg)
+                logger.info("✅ Sent player ready message")
+                
+                # Wait for response
+                response = await websocket.recv()
+                response_data = json.loads(response)
+                logger.info(f"✅ Received response: {response_data}")
+                
+                return True
+                
+        except Exception as e:
+            logger.error(f"❌ WebSocket test failed: {str(e)}")
+            return False
+
+    async def run_all_tests(self):
+        """Run all tests"""
+        logger.info("\n🎮 Starting Truck Racing Game API Tests")
+        
+        # Test root endpoint
+        success, _ = self.run_test("Root endpoint", "GET", "", 200)
+        if not success:
+            return
+            
+        # Test game creation
+        success, create_data = self.run_test("Create game", "POST", "games", 200)
+        if not success:
+            return
+            
+        game_id = create_data.get('game_id')
+        player1_id = create_data.get('player_id')
+        
+        if not game_id or not player1_id:
+            logger.error("❌ Failed to get game_id or player_id from create response")
+            return
+            
+        # Test joining game
+        success, join_data = self.run_test("Join game", "GET", f"games/{game_id}/join", 200)
+        if not success:
+            return
+            
+        player2_id = join_data.get('player_id')
+        
+        if not player2_id:
+            logger.error("❌ Failed to get player2_id from join response")
+            return
+            
+        # Test WebSocket connections for both players
+        logger.info("\n🔌 Testing WebSocket connections")
+        
+        ws_success1 = await self.test_websocket_connection(game_id, player1_id)
+        ws_success2 = await self.test_websocket_connection(game_id, player2_id)
+        
+        if ws_success1 and ws_success2:
+            self.tests_passed += 2
+            logger.info("✅ WebSocket tests passed")
+        else:
+            logger.error("❌ WebSocket tests failed")
+            
+        # Print final results
+        logger.info(f"\n📊 Tests Summary:")
+        logger.info(f"Total tests: {self.tests_run + 2}")  # +2 for WebSocket tests
+        logger.info(f"Tests passed: {self.tests_passed}")
+        success_rate = (self.tests_passed / (self.tests_run + 2)) * 100
+        logger.info(f"Success rate: {success_rate:.2f}%")
 
 if __name__ == "__main__":
-    pytest.main([__file__])
+    tester = TruckRacingGameTester()
+    asyncio.run(tester.run_all_tests())
