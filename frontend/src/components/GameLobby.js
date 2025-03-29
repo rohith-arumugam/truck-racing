@@ -87,7 +87,7 @@ const GameLobby = ({ gameId, playerId, gameData, backendUrl }) => {
   };
   
   const copyGameLink = () => {
-    const gameLink = `${window.location.origin}/?join=${activeGameId}`;
+    const gameLink = `${window.location.origin}/?join=${gameId}`;
     navigator.clipboard.writeText(gameLink)
       .then(() => {
         setCopySuccess('Copied!');
