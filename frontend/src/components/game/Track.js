@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
 import { usePlane } from '@react-three/cannon';
+import { Text } from '@react-three/drei';
 
 // Race track component with checkpoint detection
 const Track = ({ track, onLapCompleted, onOffTrack }) => {
