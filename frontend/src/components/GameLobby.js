@@ -46,7 +46,7 @@ const GameLobby = ({ gameId, playerId, gameData, backendUrl }) => {
           } else if (data.type === 'game_start') {
             console.log('Game starting!');
             // Game is starting, redirect to game screen
-            navigate(`/game?game=${activeGameId}`);
+            navigate(`/game?game=${gameId}`);
           }
         } catch (error) {
           console.error('Error parsing WebSocket message:', error, event.data);
