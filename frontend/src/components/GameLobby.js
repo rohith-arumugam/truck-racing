@@ -70,7 +70,7 @@ const GameLobby = ({ gameId, playerId, gameData, backendUrl }) => {
         socket.close();
       }
     };
-  }, [activeGameId, playerId, backendUrl, navigate]);
+  }, [gameId, playerId, backendUrl, navigate]);
   
   // If we have gameData, initialize the players state
   useEffect(() => {
