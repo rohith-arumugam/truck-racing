@@ -61,77 +61,114 @@ const RaceGame = ({ gameId, playerId, gameData, backendUrl }) => {
   // Connect to the game server via WebSocket
   useEffect(() => {
     if (!activeGameId || !playerId) {
+      console.error("Missing gameId or playerId in Race component:", { activeGameId, playerId });
       navigate('/');
       return;
     }
     
     // If we already have game data, set tracks
     if (gameData && gameData.tracks) {
+      console.log("Setting tracks from game data:", gameData.tracks);
       setTracks(gameData.tracks);
+    } else {
+      console.log("No track data available, fetching game data...");
+      // Attempt to fetch game data if we don't have it
+      fetch(`${backendUrl}/api/games/${activeGameId}/join`)
+        .then(res => res.json())
+        .then(data => {
+          if (!data.error && data.tracks) {
+            console.log("Fetched track data:", data.tracks);
+            setTracks(data.tracks);
+          }
+        })
+        .catch(err => console.error("Error fetching game data:", err));
     }
     
-    const ws = new WebSocket(`${backendUrl.replace('http', 'ws')}/api/ws/${activeGameId}/${playerId}`);
+    console.log("Attempting to connect to WebSocket in RaceGame with:", {
+      backendUrl,
+      activeGameId,
+      playerId
+    });
     
-    ws.onopen = () => {
-      console.log('Connected to the game server');
-      setSocket(ws);
-    };
-    
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    // Connect to WebSocket with proper error handling
+    let ws;
+    try {
+      const wsUrl = `${backendUrl.replace(/^http/, 'ws')}/api/ws/${activeGameId}/${playerId}`;
+      console.log("Connecting to WebSocket URL:", wsUrl);
       
-      console.log('Received message:', data);
+      ws = new WebSocket(wsUrl);
       
-      if (data.type === 'game_start') {
-        // Start the race
-        raceStartTimeRef.current = Date.now();
-        setLapStartTime(Date.now());
-        setRaceStarted(true);
-        setShowInstructions(false);
-      }
-      else if (data.type === 'player_position' && data.player_id !== playerId) {
-        // Update opponent's position
-        setOpponentData({
-          ...opponentData,
-          position: data.position,
-          rotation: data.rotation,
-          speed: data.speed
-        });
-      }
-      else if (data.type === 'player_lap' && data.player_id !== playerId) {
-        // Update opponent's lap
-        setOpponentData({
-          ...opponentData,
-          currentLap: data.lap
-        });
-        
-        // Check for race completion
-        if (data.lap >= 10) {
-          // Opponent finished race
-          setGameOver(true);
-          setWinner(data.player_id);
+      ws.onopen = () => {
+        console.log('RaceGame: Successfully connected to WebSocket');
+        setSocket(ws);
+      };
+      
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log('RaceGame: Received message:', data);
+          
+          if (data.type === 'game_start') {
+            console.log('Race starting!');
+            // Start the race
+            raceStartTimeRef.current = Date.now();
+            setLapStartTime(Date.now());
+            setRaceStarted(true);
+            setShowInstructions(false);
+          }
+          else if (data.type === 'player_position' && data.player_id !== playerId) {
+            // Update opponent's position
+            setOpponentData({
+              ...opponentData,
+              position: data.position,
+              rotation: data.rotation,
+              speed: data.speed
+            });
+          }
+          else if (data.type === 'player_lap' && data.player_id !== playerId) {
+            console.log('Opponent completed lap:', data.lap);
+            // Update opponent's lap
+            setOpponentData({
+              ...opponentData,
+              currentLap: data.lap
+            });
+            
+            // Check for race completion
+            if (data.lap >= 10) {
+              // Opponent finished race
+              console.log('Opponent finished race!');
+              setGameOver(true);
+              setWinner(data.player_id);
+            }
+          }
+          else if (data.type === 'player_quit' || data.type === 'player_disconnected') {
+            console.log('Player disconnected:', data);
+            // Player quit or disconnected - other player wins
+            if (data.winner_id === playerId) {
+              setGameOver(true);
+              setWinner(playerId);
+            }
+          }
+          else if (data.type === 'game_completed') {
+            console.log('Game completed!');
+            // Game complete - show results
+            setGameOver(true);
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message in RaceGame:', error, event.data);
         }
-      }
-      else if (data.type === 'player_quit' || data.type === 'player_disconnected') {
-        // Player quit or disconnected - other player wins
-        if (data.winner_id === playerId) {
-          setGameOver(true);
-          setWinner(playerId);
-        }
-      }
-      else if (data.type === 'game_completed') {
-        // Game complete - show results
-        setGameOver(true);
-      }
-    };
-    
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-    
-    ws.onclose = () => {
-      console.log('Disconnected from the game server');
-    };
+      };
+      
+      ws.onerror = (error) => {
+        console.error('RaceGame WebSocket error:', error);
+      };
+      
+      ws.onclose = (event) => {
+        console.log('RaceGame WebSocket disconnected:', event.code, event.reason);
+      };
+    } catch (error) {
+      console.error('Error initializing WebSocket in RaceGame:', error);
+    }
     
     // Set up keyboard event listeners
     const handleKeyDown = (e) => {
