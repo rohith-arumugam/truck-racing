@@ -10,6 +10,9 @@ from server import app, generate_track
 BACKEND_URL = os.environ.get('REACT_APP_BACKEND_URL', 'http://localhost:8001')
 WS_URL = BACKEND_URL.replace('http', 'ws')
 
+# Configure pytest-asyncio
+pytest_plugins = ('pytest_asyncio',)
+
 client = TestClient(app)
 
 def test_root():
