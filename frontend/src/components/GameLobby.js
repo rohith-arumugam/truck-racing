@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 const GameLobby = ({ gameId, playerId, gameData, backendUrl }) => {
-  const [searchParams] = useSearchParams();
-  const urlGameId = searchParams.get('game');
   const [socket, setSocket] = useState(null);
   const [players, setPlayers] = useState({});
   const [isReady, setIsReady] = useState(false);
