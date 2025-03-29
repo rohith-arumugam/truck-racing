@@ -10,34 +10,10 @@ const GameLobby = ({ gameId, playerId, gameData, backendUrl }) => {
   const [copySuccess, setCopySuccess] = useState('');
   const navigate = useNavigate();
   
-  // Use URL param if gameId prop is not available
-  const activeGameId = gameId || urlGameId;
-  
+  // Since we're using the wrapper, we should have both gameId and playerId
   useEffect(() => {
-    if (!activeGameId || !playerId) {
-      console.error("Missing gameId or playerId:", { activeGameId, playerId });
-      
-      // If we have gameId but no playerId, try to get the game data first
-      if (activeGameId && !playerId) {
-        fetch(`${backendUrl}/api/games/${activeGameId}/join`)
-          .then(res => res.json())
-          .then(data => {
-            if (data.error) {
-              console.error("Error joining game:", data.error);
-              navigate('/');
-            } else {
-              // Got player ID, now we can proceed
-              console.log("Joined game with player ID:", data.player_id);
-              window.location.reload(); // Simple solution to force proper reload with new player ID
-            }
-          })
-          .catch(err => {
-            console.error("Error joining game:", err);
-            navigate('/');
-          });
-        return;
-      }
-      
+    if (!gameId || !playerId) {
+      console.error("Missing gameId or playerId in GameLobby:", { gameId, playerId });
       navigate('/');
       return;
     }
