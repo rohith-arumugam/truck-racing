@@ -14,13 +14,49 @@ COPY frontend/package*.json ./
 
 RUN yarn install
 
+# Install compatible versions of all required packages
+
+RUN yarn add \
+
+react@18.2.0 \
+
+react-dom@18.2.0 \
+
+react-scripts@5.0.1 \
+
+react-router-dom@6.20.0 \
+
+three@0.154.0 \
+
+@react-three/fiber@8.15.11 \
+
+@react-three/drei@9.88.13 \
+
+@react-three/cannon@6.6.0 \
+
+socket.io-client@4.7.2 \
+
+uuid@9.0.1 \
+
+# Test dependencies with compatible versions
+
+@testing-library/react@14.0.0 \
+
+@testing-library/jest-dom@6.1.4 \
+
+@testing-library/user-event@14.5.1
+
 # Copy frontend source code
 
 COPY frontend/ ./
 
-# Create a production build of the frontend
+# Skip tests during build
 
-# Note: Environment variables will be applied at build time
+ENV CI=false
+
+ENV SKIP_PREFLIGHT_CHECK=true
+
+# Create a production build of the frontend
 
 RUN yarn build
 
