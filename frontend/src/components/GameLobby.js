@@ -92,8 +92,8 @@ const GameLobby = ({ gameId, playerId, gameData, backendUrl }) => {
     
     // Clean up on unmount
     return () => {
-      if (ws) {
-        ws.close();
+      if (socket) {
+        socket.close();
       }
     };
   }, [activeGameId, playerId, backendUrl, navigate]);
